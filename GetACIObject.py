@@ -12,7 +12,7 @@ DOMAINS_CHOICES = ['layer2', 'layer3', 'physical', 'vcenter']
 
 
 def input_key_args(msg='\nPlease Specify the Entity Profile:'):
-    print msg
+    print(msg)
     return input_raw_input("Profile Name", required=True)
 
 
