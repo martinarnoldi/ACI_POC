@@ -1,13 +1,50 @@
-TenantName = "ARNO-TENANT01"
-AppName = TenantName + "-APP01"
-VRFName = TenantName + "-VRF01"
-BDNameApp = TenantName + "-" + AppName + "-BD-APP"
-BDNameWeb = TenantName + "-" + AppName + "-BD-Web"
-BDNameDB = TenantName + "-" + AppName + "-BD-DB"
+TenantName = "ARNO-TENANT02"
+VRFInternalName = TenantName + "-Internal"
+VRFDMZName = TenantName + "-DMZ"
+
+
+
+
+#AppName = TenantName + "-APP01"
+#BDNameApp = TenantName + "-" + AppName + "-BD-APP"
+#Subnet = "10.10.20.0"
+#Zone = "Internal"
+#BDNameWeb = TenantName + "-" + AppName + "-BD-Web"
+#Subnet = "10.10.50.0"
+#Zone = "Internal"
+#BDNameDB = TenantName + "-" + AppName + "-BD-DB"
+#Subnet = "10.10.70.0"
+#Zone = "Internal"
+
+
+#AppName = TenantName + "-APP02"
+#BDNameApp = TenantName + "-" + AppName + "-BD-APP"
+#Subnet = "10.10.70.0"
+#Zone = "Internal"
+
+AppName = TenantName + "-APP03"
+BDNameApp = AppName + "-BD-APP"
+#Subnet = "10.10.70.0"
+#Zone = "Internal"
+BDNameWeb = AppName + "-BD-Web"
+Subnet = "10.10.70.0"
+Zone = "DMZ"
+BDNameDB = AppName + "-BD-DB"
+#Subnet = "10.10.70.0"
+#Zone = "Internal"
+
+WebEPGName = AppName +"-WebEPG"
+AppEPGName = AppName + "-AppEPG"
+DBEPGName = AppName + "-DBEPG"
+
+WebContractName = AppName + "-WebContract"
+AppContractName = AppName + "-AppContract"
+DBContractName = AppName + "-DBContract"
+
 Subnet01Name = TenantName + "-Subnet01"
 Subnet02Name = TenantName + "-Subnet02"
 Subnet03Name = TenantName + "-Subnet03"
-print(AppName)
+print AppName
 # import libraries
 from credentials import *
 from acitoolkit.acitoolkit import *
@@ -18,17 +55,24 @@ session.login()
 
 #create tenant and vrf
 tenant = Tenant(TenantName)
-vrf = Context(VRFName, tenant)
+vrfinternal = Context(VRFInternalName, tenant)
+vrfdmz = Context(VRFDMZName, tenant)
+
+
 
 # create bridge domain with vrf relationship
 bridge_domainApp = BridgeDomain(BDNameApp, tenant)
-bridge_domainApp.add_context(vrf)
+bridge_domainApp.add_context(vrfinternal)
 
 bridge_domainWeb = BridgeDomain(BDNameWeb, tenant)
-bridge_domainWeb.add_context(vrf)
+if Zone == "DMZ":
+    bridge_domainWeb.add_context(vrfdmz)
+else:
+    bridge_domainWeb.add_context(vrfinternal)
+
 
 bridge_domainDB = BridgeDomain(BDNameDB, tenant)
-bridge_domainDB.add_context(vrf)
+bridge_domainDB.add_context(vrfinternal)
 
 
 # create public subnet and assign gateway
@@ -57,17 +101,17 @@ filter_app = Filter("app", tenant)
 filter_entry_tcp5723 = FilterEntry("tcp-5723", filter_sql, etherT="ip", prot="tcp", dFromPort="5723", dToPort="5723")
 
 # create web contract and associate to http filter
-contract_web = Contract("web", tenant)
+contract_web = Contract(WebContractName, tenant)
 contract_subject_http = ContractSubject("http", contract_web)
 contract_subject_http.add_filter(filter_http)
 
 # create database contract and associate to sql filter
-contract_database = Contract("database", tenant)
+contract_database = Contract(DBContractName, tenant)
 contract_subject_sql = ContractSubject("sql", contract_database)
 contract_subject_sql.add_filter(filter_sql)
 
 # create application contract and associate to app filter
-contract_application = Contract("application", tenant)
+contract_application = Contract(AppContractName, tenant)
 contract_subject_sql = ContractSubject("app", contract_database)
 contract_subject_sql.add_filter(filter_app)
 
@@ -76,19 +120,19 @@ contract_subject_sql.add_filter(filter_app)
 app_profile = AppProfile(AppName, tenant)
 
 # create web epg and associate bridge domain and contracts
-epg_web = EPG("Web", app_profile)
+epg_web = EPG(WebEPGName, app_profile)
 epg_web.add_bd(bridge_domainWeb)
 epg_web.provide(contract_web)
 epg_web.consume(contract_application)
 
 # create app epg and associate bridge domain and contracts
-epg_app = EPG("App", app_profile)
+epg_app = EPG(AppEPGName, app_profile)
 epg_app.add_bd(bridge_domainApp)
 epg_app.provide(contract_application)
 epg_app.consume(contract_database)
 
 # create db epg and associate bridge domain and contract
-epg_database = EPG("Database", app_profile)
+epg_database = EPG(DBEPGName, app_profile)
 epg_database.add_bd(bridge_domainDB)
 epg_database.provide(contract_database)
 
@@ -96,9 +140,9 @@ epg_database.provide(contract_database)
 tenant_list = Tenant.get(session)
 
 # print list of tenants
-tenant_list
-for tn in tenant_list:
-    print(tn.name)
+#tenant_list
+#for tn in tenant_list:
+#    print tn.name
 
 # print url and configuration data
 print("\n{}\n\n{}".format(tenant.get_url(), tenant.get_json()))
@@ -119,17 +163,17 @@ else:
 # re-check tenant list
 new_tenant_list = Tenant.get(session)
 for tn in new_tenant_list:
-    print(tn.name)
+    print tn
 
 #check app list in new tenant
 app_list = AppProfile.get(session, tenant)
 for app in app_list:
-    print(app.name)
+    print app.name
 
 # check epg list in new app
 epg_list = EPG.get(session, app_profile, tenant)
 for epg in epg_list:
-    print(epg.name)
+    print epg.name
 
 # exit
 exit()

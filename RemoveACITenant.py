@@ -1,4 +1,4 @@
-TenantName = "ARNO-TENANT01"
+TenantName = "ARNO-TENANT02"
 AppName = TenantName + "-APP01"
 print AppName
 # import libraries
